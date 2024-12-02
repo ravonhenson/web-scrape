@@ -27,12 +27,13 @@ HEADERS = {
     "User-Agent": "SEC-Filings-Cyentia/1.0 (ravon@vt.edu)"
 }
 
-
 def main():
     driver = webdriver.Chrome()
-
     driver.get("https://www.sec.gov/edgar/search/#/q=%2522Item*1.05*Material*Cybersecurity*Incidents%2522&category=custom&forms=8-K")
-    time.sleep(3)
+    
+    WebDriverWait(driver, 10).until(
+        EC.presence_of_all_elements_located((By.CLASS_NAME, "preview-file"))
+    )
 
     htm_files = []
     filings = loadState()
@@ -41,9 +42,13 @@ def main():
     links = driver.find_elements(By.CLASS_NAME, "preview-file")
     logging.info(f"Located {len(links)} filings")
 
-    for link in links:  #[:1] temporary for testing
+    for link in links:
         link.click()
-        time.sleep(2)
+
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.ID, "open-file"))
+        )
+
         document_link = driver.find_element(By.ID, "open-file").get_attribute("href")
         filename = os.path.basename(document_link)
 
@@ -54,14 +59,12 @@ def main():
 
         close_button = driver.find_element(By.ID, "close-modal")
         close_button.click()
-        time.sleep(1)
 
     # download files
     for url, filename in htm_files:
         path = os.path.join(DIR, filename)
         if downloadFile(url, path):
             updateState(filename)
-
 
 def loadState():
     if not os.path.exists(STATE_FILE):
